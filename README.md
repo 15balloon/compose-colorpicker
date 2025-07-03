@@ -1,3 +1,5 @@
+[![](https://jitpack.io/v/15balloon/compose-colorpicker.svg)](https://jitpack.io/#15balloon/compose-colorpicker)
+
 # ComposeColorPicker
 
 A modular color picker library for Jetpack Compose.
