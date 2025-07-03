@@ -10,10 +10,23 @@ A modular color picker library for Jetpack Compose.
 
 ## Installation
 
-### Gradle (example)
+### Gradle
+Add the JitPack repository to your settings.gradle.kts
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+Add the dependency to your build.gradle.kts
 ```kotlin
 dependencies {
-    implementation("com.github.15balloon:composecolorpicker:1.0.0")
+    implementation("com.github.15balloon:compose-colorpicker:1.0.0")
 }
 ```
 
@@ -49,10 +62,23 @@ Jetpack Compose용 컬러 피커(Color Picker) 라이브러리입니다.
 
 ## 설치
 
-### Gradle (예시)
+### Gradle
+settings.gradle.kts에 다음과 같이 JitPack 레포지토리 추가
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+build.gradle.kts에 다음과 같이 의존성 추가
 ```kotlin
 dependencies {
-    implementation("com.github.15balloon:composecolorpicker:1.0.0")
+    implementation("com.github.15balloon:compose-colorpicker:1.0.0")
 }
 ```
 
