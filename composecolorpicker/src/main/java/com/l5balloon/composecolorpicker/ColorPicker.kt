@@ -71,6 +71,7 @@ fun colorToHex(color: Color): String {
 }
 
 // --- Composable function ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrightnessSlider(
     hue: Float,
@@ -87,12 +88,13 @@ fun BrightnessSlider(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(24.dp)
+            .height(30.dp)
             .background(
                 brush = Brush.horizontalGradient(colors),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(15.dp)
             )
-            .border(1.dp, Color.Black, RoundedCornerShape(8.dp)),
+            .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
+            .padding(horizontal = 1.dp),
         contentAlignment = Alignment.Center
     ) {
         Slider(
@@ -101,10 +103,21 @@ fun BrightnessSlider(
             valueRange = 0f..1f,
             modifier = Modifier.fillMaxWidth(),
             colors = SliderDefaults.colors(
-                thumbColor = Color.White,
+                thumbColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))),
                 activeTrackColor = Color.Transparent,
                 inactiveTrackColor = Color.Transparent
             ),
+            thumb = {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .border(
+                            width = 2.dp,
+                            color = Color.Gray,
+                            shape = CircleShape
+                        )
+                )
+            }
         )
     }
 }
@@ -198,13 +211,14 @@ fun AlphaSlider(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RGBSlider(
     value: Int,
     inputValue: String,
     onValueChange: (Int) -> Unit,
     onInputChange: (String) -> Unit,
-    channel: String, // "R", "G", "B"
+    channel: String, // "Red", "Green", "Blue"
     fixedR: Int,
     fixedG: Int,
     fixedB: Int,
@@ -212,15 +226,15 @@ fun RGBSlider(
 ) {
     val gradientColors = remember(fixedR, fixedG, fixedB, channel) {
         when (channel) {
-            "R" -> listOf(
+            "Red" -> listOf(
                 Color(0, fixedG, fixedB),
                 Color(255, fixedG, fixedB)
             )
-            "G" -> listOf(
+            "Green" -> listOf(
                 Color(fixedR, 0, fixedB),
                 Color(fixedR, 255, fixedB)
             )
-            "B" -> listOf(
+            "Blue" -> listOf(
                 Color(fixedR, fixedG, 0),
                 Color(fixedR, fixedG, 255)
             )
@@ -228,12 +242,53 @@ fun RGBSlider(
         }
     }
     Column(modifier = modifier) {
+        Text(
+            channel,
+            modifier = modifier
+                .padding(bottom = 8.dp),
+            fontSize = 14.sp,
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier.padding(bottom = 4.dp)
+            modifier = modifier
         ) {
-            Text(channel, modifier = Modifier.padding(bottom = 8.dp, end = 8.dp))
-            OutlinedTextField(
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(30.dp)
+                    .background(
+                        brush = Brush.horizontalGradient(gradientColors),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
+                    .padding(horizontal = 1.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Slider(
+                    value = value.toFloat(),
+                    onValueChange = { onValueChange(it.toInt()) },
+                    valueRange = 0f..255f,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(fixedR, fixedG, fixedB),
+                        activeTrackColor = Color.Transparent,
+                        inactiveTrackColor = Color.Transparent
+                    ),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = Color.Gray,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            BasicTextField(
                 value = inputValue,
                 onValueChange = { str ->
                     val filtered = str.filter { it.isDigit() }.take(3)
@@ -242,31 +297,17 @@ fun RGBSlider(
                     if (intVal != null) onValueChange(intVal)
                 },
                 singleLine = true,
-                modifier = Modifier.width(96.dp),
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(24.dp)
-                .background(
-                    brush = Brush.horizontalGradient(gradientColors),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .border(1.dp, Color.Black, RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Slider(
-                value = value.toFloat(),
-                onValueChange = { onValueChange(it.toInt()) },
-                valueRange = 0f..255f,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.Transparent,
-                    inactiveTrackColor = Color.Transparent
-                )
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(30.dp)
+                    .background(
+                        color = Color.White,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                textStyle = LocalTextStyle.current.copy(
+                    textAlign = TextAlign.Center,
+                    fontSize = 10.sp,
+                ),
             )
         }
     }
@@ -291,7 +332,7 @@ fun RGBSliders(
             inputValue = rInput,
             onValueChange = onRChange,
             onInputChange = onRInputChange,
-            channel = "R",
+            channel = "Red",
             fixedR = r, fixedG = g, fixedB = b
         )
         Spacer(Modifier.height(16.dp))
@@ -300,7 +341,7 @@ fun RGBSliders(
             inputValue = gInput,
             onValueChange = onGChange,
             onInputChange = onGInputChange,
-            channel = "G",
+            channel = "Green",
             fixedR = r, fixedG = g, fixedB = b
         )
         Spacer(Modifier.height(16.dp))
@@ -309,7 +350,7 @@ fun RGBSliders(
             inputValue = bInput,
             onValueChange = onBChange,
             onInputChange = onBInputChange,
-            channel = "B",
+            channel = "Blue",
             fixedR = r, fixedG = g, fixedB = b
         )
     }
