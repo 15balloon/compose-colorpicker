@@ -5,7 +5,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,8 +26,11 @@ import kotlin.math.*
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 
 // --- Util functions ---
@@ -55,19 +60,14 @@ fun makeColorWheelBitmap(width: Int, height: Int, value: Float): Bitmap {
     return bitmap
 }
 
-fun isValidHex(hex: String, useAlpha: Boolean): Boolean {
-    val regex = if (useAlpha) Regex("([A-Fa-f0-9]{8})$") else Regex("([A-Fa-f0-9]{6})$")
+fun isValidHex(hex: String): Boolean {
+    val regex = Regex("([A-Fa-f0-9]{8})$")
     return regex.matches(hex)
 }
 
-fun colorToHex(color: Color, useAlpha: Boolean): String {
+fun colorToHex(color: Color): String {
     val intColor = color.toArgb()
-    return if (useAlpha) {
-        String.format("%08X", intColor)
-    } else {
-        val rgb = intColor and 0x00FFFFFF
-        String.format("%06X", rgb)
-    }
+    return String.format("%08X", intColor)
 }
 
 // --- Composable function ---
@@ -106,6 +106,95 @@ fun BrightnessSlider(
                 inactiveTrackColor = Color.Transparent
             ),
         )
+    }
+}
+
+@Composable
+fun CheckerboardBackground(
+    modifier: Modifier = Modifier,
+    cellSize: Dp = 8.dp
+) {
+    Canvas(modifier = modifier) {
+        val cellPx = cellSize.toPx()
+        val cols = (size.width / cellPx).toInt() + 1
+        val rows = (size.height / cellPx).toInt() + 1
+        val color1 = Color(0xFFC0C0C0)
+        val color2 = Color.White
+        for (x in 0 until cols) {
+            for (y in 0 until rows) {
+                drawRect(
+                    color = if ((x + y) % 2 == 0) color1 else color2,
+                    topLeft = Offset(x * cellPx, y * cellPx),
+                    size = Size(cellPx, cellPx)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlphaSlider(
+    color: Color,
+    alpha: Int,
+    onAlphaChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val gradientColors = remember(color) {
+        listOf(
+            color.copy(alpha = 0f),
+            color.copy(alpha = 1f)
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .clip(RoundedCornerShape(15.dp))
+    ) {
+        // Checkerboard Background
+        CheckerboardBackground(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(30.dp)
+        )
+        // Alpha Gradient Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+                .background(
+                    brush = Brush.horizontalGradient(gradientColors),
+                    shape = RoundedCornerShape(15.dp)
+                )
+                .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
+                .padding(horizontal = 1.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Slider(
+                value = alpha.toFloat(),
+                onValueChange = { onAlphaChange(it.toInt()) },
+                valueRange = 0f..255f,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = color,
+                    activeTrackColor = Color.Transparent,
+                    inactiveTrackColor = Color.Transparent
+                ),
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .border(
+                                width = 2.dp,
+                                color = Color.Gray,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            )
+        }
     }
 }
 
@@ -294,7 +383,7 @@ fun HexCode(
     ) {
         when {
             useHexInput && useAlpha -> {
-                // # 고정, 8자리 입력
+                // write 8 letters
                 Text("#")
                 OutlinedTextField(
                     value = hex,
@@ -308,12 +397,13 @@ fun HexCode(
                 )
             }
             useHexInput && !useAlpha -> {
-                // #FF 고정, 6자리 입력
-                Text("#FF")
+                // write 6 letters
+                Text("#${hex.substring(0, 2)}")
                 OutlinedTextField(
-                    value = hex,
+                    value = hex.substring(2),
                     onValueChange = { str ->
-                        val filtered = str.filter { c -> c.isLetterOrDigit() }.take(6).uppercase()
+                        val newStr = hex.substring(0, 2) + str
+                        val filtered = newStr.filter { c -> c.isLetterOrDigit() }.take(8).uppercase()
                         onHexChange(filtered)
                     },
                     singleLine = true,
@@ -322,20 +412,12 @@ fun HexCode(
                 )
             }
             else -> {
-                // 입력 불가, #FF + 6자리 텍스트 표시 (useAlpha=false)
-                if (useAlpha) {
-                    Text(
-                        "#${hex.padEnd(8, '0')}",
-                        modifier = Modifier.fillMaxWidth(),
-                        style = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-                    )
-                } else {
-                    Text(
-                        "#FF${hex.padEnd(6, '0')}",
-                        modifier = Modifier.fillMaxWidth(),
-                        style = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
-                    )
-                }
+                // Can't write, 8 letters
+                Text(
+                    "#${hex.padEnd(8, '0')}",
+                    modifier = Modifier.fillMaxWidth(),
+                    style = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                )
             }
         }
     }
@@ -347,6 +429,7 @@ fun ColorPicker(
     onColorChanged: (Color) -> Unit,
     modifier: Modifier = Modifier,
     useAlpha: Boolean = false,
+    showAlphaSlider: Boolean = false,
     showRGBSliders: Boolean = true,
     showHexCode: Boolean = true,
     useHexInput: Boolean = true,
@@ -358,7 +441,7 @@ fun ColorPicker(
     var pickedColor by remember(initialColor) { mutableStateOf(initialColor) }
     var hexInput by remember(initialColor) {
         mutableStateOf(
-            if (useAlpha) colorToHex(initialColor, true) else colorToHex(initialColor, false).takeLast(6)
+            colorToHex(initialColor)
         )
     }
     var rgb by remember(initialColor) {
@@ -382,10 +465,10 @@ fun ColorPicker(
     }
     var alphaInput by remember { mutableStateOf((initialColor.alpha * 255).roundToInt().toString()) }
     fun updateColorFromHSV() {
-        val colorInt = if (useAlpha) android.graphics.Color.HSVToColor(alpha, hsv) else android.graphics.Color.HSVToColor(0xFF, hsv)
+        val colorInt = android.graphics.Color.HSVToColor(alpha, hsv)
         val color = Color(colorInt)
         pickedColor = color
-        hexInput = if (useAlpha) colorToHex(color, true) else colorToHex(color, false).takeLast(6)
+        hexInput = colorToHex(color)
         rgb = Triple(
             (color.red * 255).roundToInt(),
             (color.green * 255).roundToInt(),
@@ -400,10 +483,28 @@ fun ColorPicker(
         alphaInput = (color.alpha * 255).roundToInt().toString()
         onColorChanged(color)
     }
+    fun updateColorFromAlpha() {
+        val colorInt = android.graphics.Color.HSVToColor(alpha, hsv)
+        val color = Color(colorInt)
+        pickedColor = color
+        hexInput = colorToHex(color)
+        onColorChanged(color)
+    }
+    fun updateColorFromRGB(r: Int, g: Int, b: Int) {
+        val color = Color(r, g, b, alpha)
+        pickedColor = color
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        hexInput = colorToHex(color)
+        rgbInput = Triple(
+            (color.red * 255).roundToInt().toString(),
+            (color.green * 255).roundToInt().toString(),
+            (color.blue * 255).roundToInt().toString()
+        )
+        onColorChanged(color)
+    }
     fun updateColorFromHex(hex: String) {
         val color = runCatching {
-            if (useAlpha) Color(("#$hex").toColorInt())
-            else Color(("#FF$hex").toColorInt())
+            Color(("#$hex").toColorInt())
         }.getOrNull()
         if (color != null) {
             pickedColor = color
@@ -422,18 +523,6 @@ fun ColorPicker(
             alphaInput = (color.alpha * 255).roundToInt().toString()
             onColorChanged(color)
         }
-    }
-    fun updateColorFromRGB(r: Int, g: Int, b: Int) {
-        val color = if (useAlpha) Color(r, g, b, alpha) else Color(r, g, b)
-        pickedColor = color
-        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-        hexInput = if (useAlpha) colorToHex(color, true) else colorToHex(color, false).takeLast(6)
-        rgbInput = Triple(
-            (color.red * 255).roundToInt().toString(),
-            (color.green * 255).roundToInt().toString(),
-            (color.blue * 255).roundToInt().toString()
-        )
-        onColorChanged(color)
     }
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -460,6 +549,18 @@ fun ColorPicker(
                 updateColorFromHSV()
             }
         )
+        if (showAlphaSlider) {
+            Spacer(Modifier.height(16.dp))
+            AlphaSlider(
+                color = pickedColor,
+                alpha = alpha,
+                onAlphaChange = { newAlpha ->
+                    alpha = newAlpha
+                    alphaInput = alpha.toString()
+                    updateColorFromAlpha()
+                }
+            )
+        }
         if (showRGBSliders) {
             Spacer(Modifier.height(16.dp))
             RGBSliders(
@@ -510,9 +611,9 @@ fun ColorPicker(
                 hex = hexInput,
                 onHexChange = { filtered ->
                     if (useHexInput) {
-                        val hex = filtered.filter { c -> c.isLetterOrDigit() }.take(if (useAlpha) 8 else 6).uppercase()
+                        val hex = filtered.filter { c -> c.isLetterOrDigit() }.take(8).uppercase()
                         hexInput = hex
-                        if (isValidHex(hex, useAlpha)) {
+                        if (isValidHex(hex)) {
                             updateColorFromHex(hex)
                         }
                     }
