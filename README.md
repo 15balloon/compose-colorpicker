@@ -6,7 +6,7 @@ A modular color picker library for Jetpack Compose.
 
 ## Features
 - All-in-one `ColorPicker` composable for easy use
-- Also provides ColorWheel, HexInput, BrightnessSlider, RGBSliders as independent composables
+- Also provides ColorWheel, BrightnessSlider, AlphaSlider, RGBSliders, HexInput as independent composables
 - Compose 1.5+ support
 - Highly customizable and composable
 
@@ -28,7 +28,7 @@ dependencyResolutionManagement {
 Add the dependency to your build.gradle.kts
 ```kotlin
 dependencies {
-    implementation("com.github.15balloon:compose-colorpicker:1.0.0")
+    implementation("com.github.15balloon:compose-colorpicker:1.1.0")
 }
 ```
 
@@ -42,7 +42,12 @@ fun MyColorPickerScreen() {
     var color by remember { mutableStateOf(Color.Red) }
     ColorPicker(
         initialColor = color,
-        onColorChanged = { color = it }
+        onColorChanged = { color = it },
+        useAlpha: Boolean = true,
+        showAlphaSlider: Boolean = true,
+        showRGBSliders: Boolean = true,
+        showHexCode: Boolean = true,
+        useHexInput: Boolean = true,
     )
 }
 ```
@@ -57,10 +62,10 @@ MIT
 Jetpack Compose용 컬러 피커(Color Picker) 라이브러리입니다.
 
 ## 특징
-- 통합형 `ColorPicker` 컴포저블 제공 (간편 사용)
-- ColorWheel, HexInput, BrightnessSlider, RGBSliders 등 개별 컴포저블도 제공
+- 간편하게 사용할 수 있는 통합형 `ColorPicker` 컴포저블 제공
+- ColorWheel, BrightnessSlider, AlphaSlider, RGBSliders, HexInput 등 개별 컴포저블도 제공
 - Compose 1.5+ 지원
-- 조합 및 커스터마이즈 용이
+- 원하는 컴포저블 조합으로 UI 커스터마이징
 
 ## 설치
 
@@ -80,7 +85,7 @@ dependencyResolutionManagement {
 build.gradle.kts에 다음과 같이 의존성 추가
 ```kotlin
 dependencies {
-    implementation("com.github.15balloon:compose-colorpicker:1.0.0")
+    implementation("com.github.15balloon:compose-colorpicker:1.1.0")
 }
 ```
 
@@ -94,10 +99,15 @@ fun MyColorPickerScreen() {
     var color by remember { mutableStateOf(Color.Red) }
     ColorPicker(
         initialColor = color,
-        onColorChanged = { color = it }
+        onColorChanged = { color = it },
+        useAlpha: Boolean = true,
+        showAlphaSlider: Boolean = true,
+        showRGBSliders: Boolean = true,
+        showHexCode: Boolean = true,
+        useHexInput: Boolean = true,
     )
 }
 ```
 
 ## 라이선스
-MIT 
+MIT
