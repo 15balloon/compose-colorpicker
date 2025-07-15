@@ -71,13 +71,84 @@ fun colorToHex(color: Color): String {
 }
 
 // --- Composable function ---
+@Composable
+private fun SliderTextField(
+    inputValue: String,
+    onValueChange: (Int) -> Unit,
+    onInputChange: (String) -> Unit,
+    maxValue: Int
+) {
+    Box(
+        modifier = Modifier
+            .width(80.dp)
+            .height(32.dp)
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        BasicTextField(
+            value = inputValue,
+            onValueChange = { str ->
+                val filtered = str.filter { it.isDigit() }.take(3)
+                onInputChange(filtered)
+                val intVal = filtered.toIntOrNull()?.coerceIn(0, maxValue)
+                if (intVal != null) onValueChange(intVal)
+            },
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SliderTextField(
+    inputValue: String,
+    onValueChange: (Float) -> Unit,
+    onInputChange: (String) -> Unit,
+    maxValue: Int
+) {
+    val maxDigits = maxValue.toString().length
+    Box(
+        modifier = Modifier
+            .width(80.dp)
+            .height(32.dp)
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        BasicTextField(
+            value = inputValue,
+            onValueChange = { str ->
+                val filtered = str.filter { it.isDigit() }.take(maxDigits)
+                onInputChange(filtered)
+                val floatVal = filtered.toFloatOrNull()?.coerceIn(0f, maxValue.toFloat())
+                if (floatVal != null) onValueChange(floatVal)
+            },
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(
+                textAlign = TextAlign.Center,
+                fontSize = 10.sp,
+            ),
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrightnessSlider(
     hue: Float,
     saturation: Float,
     value: Float,
-    onValueChange: (Float) -> Unit
+    valueInput: String,
+    onValueChange: (Float) -> Unit,
+    onValueInputChange: (String) -> Unit
 ) {
     val colors = remember(hue, saturation) {
         List(11) { i ->
@@ -85,40 +156,46 @@ fun BrightnessSlider(
             Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, v)))
         }
     }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(30.dp)
-            .background(
-                brush = Brush.horizontalGradient(colors),
-                shape = RoundedCornerShape(15.dp)
-            )
-            .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
-            .padding(horizontal = 1.dp),
-        contentAlignment = Alignment.Center
+    Row(
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = 0f..1f,
-            modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))),
-                activeTrackColor = Color.Transparent,
-                inactiveTrackColor = Color.Transparent
-            ),
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .border(
-                            width = 2.dp,
-                            color = Color.Gray,
-                            shape = CircleShape
-                        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(30.dp)
+                .background(
+                    brush = Brush.horizontalGradient(colors),
+                    shape = RoundedCornerShape(15.dp)
                 )
-            }
-        )
+                .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
+                .padding(horizontal = 1.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))),
+                    activeTrackColor = Color.Transparent,
+                    inactiveTrackColor = Color.Transparent
+                ),
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .border(
+                                width = 2.dp,
+                                color = Color.Gray,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        SliderTextField(valueInput, onValueChange, onValueInputChange, 100)
     }
 }
 
@@ -150,7 +227,9 @@ fun CheckerboardBackground(
 fun AlphaSlider(
     color: Color,
     alpha: Int,
+    alphaInput: String,
     onAlphaChange: (Int) -> Unit,
+    onAlphaInputChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val gradientColors = remember(color) {
@@ -159,55 +238,60 @@ fun AlphaSlider(
             color.copy(alpha = 1f)
         )
     }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(30.dp)
-            .clip(RoundedCornerShape(15.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Checkerboard Background
-        CheckerboardBackground(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(30.dp)
-        )
-        // Alpha Gradient Overlay
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = modifier
+                .weight(1f)
                 .height(30.dp)
-                .background(
-                    brush = Brush.horizontalGradient(gradientColors),
-                    shape = RoundedCornerShape(15.dp)
-                )
-                .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
-                .padding(horizontal = 1.dp),
-            contentAlignment = Alignment.Center
+                .clip(RoundedCornerShape(15.dp))
         ) {
-            Slider(
-                value = alpha.toFloat(),
-                onValueChange = { onAlphaChange(it.toInt()) },
-                valueRange = 0f..255f,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = color,
-                    activeTrackColor = Color.Transparent,
-                    inactiveTrackColor = Color.Transparent
-                ),
-                thumb = {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .border(
-                                width = 2.dp,
-                                color = Color.Gray,
-                                shape = CircleShape
-                            )
-                    )
-                }
+            // Checkerboard Background
+            CheckerboardBackground(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(30.dp)
             )
+            // Alpha Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(30.dp)
+                    .background(
+                        brush = Brush.horizontalGradient(gradientColors),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    .border(1.dp, Color.Black, RoundedCornerShape(15.dp))
+                    .padding(horizontal = 1.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Slider(
+                    value = alpha.toFloat(),
+                    onValueChange = { onAlphaChange(it.toInt()) },
+                    valueRange = 0f..255f,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = color,
+                        activeTrackColor = Color.Transparent,
+                        inactiveTrackColor = Color.Transparent
+                    ),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = Color.Gray,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                )
+            }
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        SliderTextField(alphaInput, onAlphaChange, onAlphaInputChange, 255)
     }
 }
 
@@ -288,27 +372,7 @@ fun RGBSlider(
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            BasicTextField(
-                value = inputValue,
-                onValueChange = { str ->
-                    val filtered = str.filter { it.isDigit() }.take(3)
-                    onInputChange(filtered)
-                    val intVal = filtered.toIntOrNull()?.coerceIn(0, 255)
-                    if (intVal != null) onValueChange(intVal)
-                },
-                singleLine = true,
-                modifier = Modifier
-                    .width(80.dp)
-                    .height(30.dp)
-                    .background(
-                        color = Color.White,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                textStyle = LocalTextStyle.current.copy(
-                    textAlign = TextAlign.Center,
-                    fontSize = 10.sp,
-                ),
-            )
+            SliderTextField(inputValue, onValueChange, onInputChange, 255)
         }
     }
 }
@@ -369,7 +433,8 @@ fun ColorWheel(
     val sizePx = with(density) { size.roundToPx() }
     val bitmap = remember(value, sizePx) { makeColorWheelBitmap(sizePx, sizePx, value) }
     Box(
-        modifier = modifier.size(size)
+        modifier = modifier
+            .size(size)
             .pointerInput(value) {
                 awaitPointerEventScope {
                     while (true) {
@@ -476,13 +541,22 @@ fun ColorPicker(
     useHexInput: Boolean = true,
     colorWheelSize: Dp = 220.dp
 ) {
-    val hsv = remember(initialColor) {
-        FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }
-    }
     var pickedColor by remember(initialColor) { mutableStateOf(initialColor) }
-    var hexInput by remember(initialColor) {
+    val hsv by remember(initialColor) {
         mutableStateOf(
-            colorToHex(initialColor)
+            FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }
+        )
+    }
+    var hsvInput by remember(initialColor) {
+        mutableStateOf(
+            FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }
+                .let { hsv ->
+                    arrayOf(
+                        hsv[0].roundToInt().toString(),           // Hue: 0~360
+                        (hsv[1] * 100).roundToInt().toString(),   // Saturation: 0~100
+                        (hsv[2] * 100).roundToInt().toString()    // Value: 0~100
+                    )
+                }
         )
     }
     var rgb by remember(initialColor) {
@@ -494,7 +568,6 @@ fun ColorPicker(
             )
         )
     }
-    var alpha by remember(initialColor) { mutableIntStateOf((initialColor.alpha * 255).roundToInt()) }
     var rgbInput by remember {
         mutableStateOf(
             Triple(
@@ -504,7 +577,14 @@ fun ColorPicker(
             )
         )
     }
+    var alpha by remember(initialColor) { mutableIntStateOf((initialColor.alpha * 255).roundToInt()) }
     var alphaInput by remember { mutableStateOf((initialColor.alpha * 255).roundToInt().toString()) }
+    var hexInput by remember(initialColor) {
+        mutableStateOf(
+            colorToHex(initialColor)
+        )
+    }
+
     fun updateColorFromHSV() {
         val colorInt = android.graphics.Color.HSVToColor(alpha, hsv)
         val color = Color(colorInt)
@@ -535,6 +615,11 @@ fun ColorPicker(
         val color = Color(r, g, b, alpha)
         pickedColor = color
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        hsvInput = arrayOf(
+            hsv[0].roundToInt().toString(),
+            (hsv[1] * 100).roundToInt().toString(),
+            (hsv[2] * 100).roundToInt().toString()
+        )
         hexInput = colorToHex(color)
         rgbInput = Triple(
             (color.red * 255).roundToInt().toString(),
@@ -550,6 +635,11 @@ fun ColorPicker(
         if (color != null) {
             pickedColor = color
             android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+            hsvInput = arrayOf(
+                hsv[0].roundToInt().toString(),
+                (hsv[1] * 100).roundToInt().toString(),
+                (hsv[2] * 100).roundToInt().toString()
+            )
             rgb = Triple(
                 (color.red * 255).roundToInt(),
                 (color.green * 255).roundToInt(),
@@ -565,6 +655,7 @@ fun ColorPicker(
             onColorChanged(color)
         }
     }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -585,21 +676,40 @@ fun ColorPicker(
             hue = hsv[0],
             saturation = hsv[1],
             value = hsv[2],
+            valueInput = hsvInput[2],
             onValueChange = {
                 hsv[2] = it
+                hsvInput[2] = (it * 100).roundToInt().toString()
                 updateColorFromHSV()
-            }
+            },
+            onValueInputChange = { str ->
+                val floatVal = str.toFloatOrNull()?.coerceIn(0f, 100f)
+                if (floatVal != null) {
+                    hsv[2] = floatVal
+                    hsvInput[2] = str
+                    updateColorFromHSV()
+                }
+            },
         )
         if (showAlphaSlider) {
             Spacer(Modifier.height(16.dp))
             AlphaSlider(
                 color = pickedColor,
                 alpha = alpha,
+                alphaInput = alphaInput,
                 onAlphaChange = { newAlpha ->
                     alpha = newAlpha
                     alphaInput = alpha.toString()
                     updateColorFromAlpha()
-                }
+                },
+                onAlphaInputChange = { str ->
+                    val intVal = str.toIntOrNull()?.coerceIn(0, 255)
+                    if (intVal != null) {
+                        alpha = intVal
+                        alphaInput = alpha.toString()
+                        updateColorFromAlpha()
+                    }
+                },
             )
         }
         if (showRGBSliders) {
