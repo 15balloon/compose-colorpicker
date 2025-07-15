@@ -78,40 +78,6 @@ private fun SliderTextField(
     onInputChange: (String) -> Unit,
     maxValue: Int
 ) {
-    Box(
-        modifier = Modifier
-            .width(80.dp)
-            .height(32.dp)
-            .background(
-                color = Color.White,
-                shape = RoundedCornerShape(12.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        BasicTextField(
-            value = inputValue,
-            onValueChange = { str ->
-                val filtered = str.filter { it.isDigit() }.take(3)
-                onInputChange(filtered)
-                val intVal = filtered.toIntOrNull()?.coerceIn(0, maxValue)
-                if (intVal != null) onValueChange(intVal)
-            },
-            singleLine = true,
-            textStyle = LocalTextStyle.current.copy(
-                textAlign = TextAlign.Center,
-                fontSize = 10.sp,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun SliderTextField(
-    inputValue: String,
-    onValueChange: (Float) -> Unit,
-    onInputChange: (String) -> Unit,
-    maxValue: Int
-) {
     val maxDigits = maxValue.toString().length
     Box(
         modifier = Modifier
@@ -128,8 +94,8 @@ private fun SliderTextField(
             onValueChange = { str ->
                 val filtered = str.filter { it.isDigit() }.take(maxDigits)
                 onInputChange(filtered)
-                val floatVal = filtered.toFloatOrNull()?.coerceIn(0f, maxValue.toFloat())
-                if (floatVal != null) onValueChange(floatVal)
+                val intVal = filtered.toIntOrNull()?.coerceIn(0, maxValue)
+                if (intVal != null) onValueChange(intVal)
             },
             singleLine = true,
             textStyle = LocalTextStyle.current.copy(
@@ -147,7 +113,7 @@ fun BrightnessSlider(
     saturation: Float,
     value: Float,
     valueInput: String,
-    onValueChange: (Float) -> Unit,
+    onValueChange: (Int) -> Unit,
     onValueInputChange: (String) -> Unit
 ) {
     val colors = remember(hue, saturation) {
@@ -172,9 +138,9 @@ fun BrightnessSlider(
             contentAlignment = Alignment.Center
         ) {
             Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = 0f..1f,
+                value = round(value * 100),
+                onValueChange = { onValueChange(it.toInt()) },
+                valueRange = 0f..100f,
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
                     thumbColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))),
@@ -678,8 +644,8 @@ fun ColorPicker(
             value = hsv[2],
             valueInput = hsvInput[2],
             onValueChange = {
-                hsv[2] = it
-                hsvInput[2] = (it * 100).roundToInt().toString()
+                hsv[2] = (it / 100f)
+                hsvInput[2] = it.toString()
                 updateColorFromHSV()
             },
             onValueInputChange = { str ->
