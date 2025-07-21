@@ -37,7 +37,7 @@ import androidx.core.graphics.toColorInt
 fun Float.toRadians() = (this / 180f) * Math.PI.toFloat()
 fun Float.toDegrees() = (this * 180f) / Math.PI.toFloat()
 
-fun makeColorWheelBitmap(width: Int, height: Int, value: Float): Bitmap {
+fun makeColorWheelBitmap(width: Int, height: Int): Bitmap {
     val bitmap = createBitmap(width, height)
     val centerX = width / 2f
     val centerY = height / 2f
@@ -50,7 +50,7 @@ fun makeColorWheelBitmap(width: Int, height: Int, value: Float): Bitmap {
             if (r <= radius) {
                 val hue = (atan2(dy, dx).toDegrees() + 360) % 360
                 val sat = (r / radius).coerceIn(0f, 1f)
-                val color = android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, value))
+                val color = android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, 1f))
                 bitmap[x, y] = color
             } else {
                 bitmap[x, y] = android.graphics.Color.TRANSPARENT
@@ -345,10 +345,9 @@ fun RGBSlider(
 
 @Composable
 fun RGBSliders(
+    color: Color,
     r: Int, g: Int, b: Int,
-    rInput: String,
-    gInput: String,
-    bInput: String,
+    rInput: String, gInput: String, bInput: String,
     onRChange: (Int) -> Unit,
     onGChange: (Int) -> Unit,
     onBChange: (Int) -> Unit,
@@ -397,7 +396,7 @@ fun ColorWheel(
 ) {
     val density = LocalDensity.current
     val sizePx = with(density) { size.roundToPx() }
-    val bitmap = remember(value, sizePx) { makeColorWheelBitmap(sizePx, sizePx, value) }
+    val bitmap = remember(sizePx) { makeColorWheelBitmap(sizePx, sizePx) }
     Box(
         modifier = modifier
             .size(size)
@@ -425,11 +424,16 @@ fun ColorWheel(
             }
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
-            drawImage(bitmap.asImageBitmap())
             val radius = sizePx / 2f
             val selR = radius * saturation
             val selX = center.x + cos(hue.toRadians()) * selR
             val selY = center.y + sin(hue.toRadians()) * selR
+            drawImage(bitmap.asImageBitmap())
+            drawCircle(
+                color = Color.Black,
+                radius = radius,
+                alpha = 1f - value
+            )
             drawCircle(
                 color = Color.White,
                 radius = 16f,
@@ -507,118 +511,77 @@ fun ColorPicker(
     useHexInput: Boolean = true,
     colorWheelSize: Dp = 220.dp
 ) {
-    var pickedColor by remember(initialColor) { mutableStateOf(initialColor) }
-    val hsv by remember(initialColor) {
-        mutableStateOf(
-            FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }
-        )
-    }
-    var hsvInput by remember(initialColor) {
-        mutableStateOf(
-            FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }
-                .let { hsv ->
-                    arrayOf(
-                        hsv[0].roundToInt().toString(),           // Hue: 0~360
-                        (hsv[1] * 100).roundToInt().toString(),   // Saturation: 0~100
-                        (hsv[2] * 100).roundToInt().toString()    // Value: 0~100
-                    )
-                }
-        )
-    }
-    var rgb by remember(initialColor) {
-        mutableStateOf(
-            Triple(
-                (initialColor.red * 255).roundToInt(),
-                (initialColor.green * 255).roundToInt(),
-                (initialColor.blue * 255).roundToInt()
+    var red by remember { mutableFloatStateOf(initialColor.red * 255f) }
+    var green by remember { mutableFloatStateOf(initialColor.green * 255f) }
+    var blue by remember { mutableFloatStateOf(initialColor.blue * 255f) }
+    var alpha by remember { mutableFloatStateOf(initialColor.alpha * 255f) }
+    val hsv by remember { mutableStateOf(FloatArray(3).also { android.graphics.Color.colorToHSV(initialColor.toArgb(), it) }) }
+
+    // Make pickedColor a derived state that is only recalculated when r, g, b, or a changes
+    val pickedColor by remember {
+        derivedStateOf {
+            Color(
+                red = red / 255f,
+                green = green / 255f,
+                blue = blue / 255f,
+                alpha = alpha / 255f
             )
-        )
-    }
-    var rgbInput by remember {
-        mutableStateOf(
-            Triple(
-                (initialColor.red * 255).roundToInt().toString(),
-                (initialColor.green * 255).roundToInt().toString(),
-                (initialColor.blue * 255).roundToInt().toString()
-            )
-        )
-    }
-    var alpha by remember(initialColor) { mutableIntStateOf((initialColor.alpha * 255).roundToInt()) }
-    var alphaInput by remember { mutableStateOf((initialColor.alpha * 255).roundToInt().toString()) }
-    var hexInput by remember(initialColor) {
-        mutableStateOf(
-            colorToHex(initialColor)
-        )
+        }
     }
 
-    fun updateColorFromHSV() {
-        val colorInt = android.graphics.Color.HSVToColor(alpha, hsv)
-        val color = Color(colorInt)
-        pickedColor = color
-        hexInput = colorToHex(color)
-        rgb = Triple(
-            (color.red * 255).roundToInt(),
-            (color.green * 255).roundToInt(),
-            (color.blue * 255).roundToInt()
-        )
-        rgbInput = Triple(
-            (color.red * 255).roundToInt().toString(),
-            (color.green * 255).roundToInt().toString(),
-            (color.blue * 255).roundToInt().toString()
-        )
-        alpha = (color.alpha * 255).roundToInt()
-        alphaInput = (color.alpha * 255).roundToInt().toString()
-        onColorChanged(color)
+    LaunchedEffect(pickedColor) {
+        onColorChanged(pickedColor)
     }
-    fun updateColorFromAlpha() {
-        val colorInt = android.graphics.Color.HSVToColor(alpha, hsv)
-        val color = Color(colorInt)
-        pickedColor = color
-        hexInput = colorToHex(color)
-        onColorChanged(color)
+
+    val hexInput by remember {
+        derivedStateOf { colorToHex(pickedColor) }
     }
-    fun updateColorFromRGB(r: Int, g: Int, b: Int) {
-        val color = Color(r, g, b, alpha)
-        pickedColor = color
-        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-        hsvInput = arrayOf(
-            hsv[0].roundToInt().toString(),
-            (hsv[1] * 100).roundToInt().toString(),
-            (hsv[2] * 100).roundToInt().toString()
-        )
-        hexInput = colorToHex(color)
-        rgbInput = Triple(
-            (color.red * 255).roundToInt().toString(),
-            (color.green * 255).roundToInt().toString(),
-            (color.blue * 255).roundToInt().toString()
-        )
-        onColorChanged(color)
+
+    var rInput by remember { mutableStateOf(red.roundToInt().toString()) }
+    var gInput by remember { mutableStateOf(green.roundToInt().toString()) }
+    var bInput by remember { mutableStateOf(blue.roundToInt().toString()) }
+    var alphaInput by remember { mutableStateOf(alpha.roundToInt().toString()) }
+    var valueInput by remember { mutableStateOf((hsv[2] * 100).roundToInt().toString())}
+
+    val onRChange = remember<(Int) -> Unit> {
+        { newValue ->
+            red = newValue.toFloat()
+            rInput = newValue.toString()
+            android.graphics.Color.colorToHSV(pickedColor.copy(red = newValue/255f).toArgb(), hsv)
+        }
     }
-    fun updateColorFromHex(hex: String) {
-        val color = runCatching {
-            Color(("#$hex").toColorInt())
-        }.getOrNull()
-        if (color != null) {
-            pickedColor = color
-            android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-            hsvInput = arrayOf(
-                hsv[0].roundToInt().toString(),
-                (hsv[1] * 100).roundToInt().toString(),
-                (hsv[2] * 100).roundToInt().toString()
-            )
-            rgb = Triple(
-                (color.red * 255).roundToInt(),
-                (color.green * 255).roundToInt(),
-                (color.blue * 255).roundToInt()
-            )
-            rgbInput = Triple(
-                (color.red * 255).roundToInt().toString(),
-                (color.green * 255).roundToInt().toString(),
-                (color.blue * 255).roundToInt().toString()
-            )
-            alpha = (color.alpha * 255).roundToInt()
-            alphaInput = (color.alpha * 255).roundToInt().toString()
-            onColorChanged(color)
+    val onGChange = remember<(Int) -> Unit> {
+        { newValue ->
+            green = newValue.toFloat()
+            gInput = newValue.toString()
+            android.graphics.Color.colorToHSV(pickedColor.copy(green = newValue/255f).toArgb(), hsv)
+        }
+    }
+    val onBChange = remember<(Int) -> Unit> {
+        { newValue ->
+            blue = newValue.toFloat()
+            bInput = newValue.toString()
+            android.graphics.Color.colorToHSV(pickedColor.copy(blue = newValue/255f).toArgb(), hsv)
+        }
+    }
+    val onAlphaChange = remember<(Int) -> Unit> {
+        { newValue ->
+            alpha = newValue.toFloat()
+            alphaInput = newValue.toString()
+        }
+    }
+    val onValueChange = remember<(Int) -> Unit> {
+        { newValue ->
+            hsv[2] = newValue / 100f
+            valueInput = newValue.toString()
+            val colorInt = android.graphics.Color.HSVToColor(alpha.roundToInt(), hsv)
+            val color = Color(colorInt)
+            red = color.red * 255
+            green = color.green * 255
+            blue = color.blue * 255
+            rInput = red.roundToInt().toString()
+            gInput = green.roundToInt().toString()
+            bInput = blue.roundToInt().toString()
         }
     }
 
@@ -633,7 +596,14 @@ fun ColorPicker(
             onHsvChange = { hue, sat ->
                 hsv[0] = hue
                 hsv[1] = sat
-                updateColorFromHSV()
+                val colorInt = android.graphics.Color.HSVToColor(alpha.roundToInt(), hsv)
+                val color = Color(colorInt)
+                red = color.red * 255
+                green = color.green * 255
+                blue = color.blue * 255
+                rInput = red.roundToInt().toString()
+                gInput = green.roundToInt().toString()
+                bInput = blue.roundToInt().toString()
             },
             size = colorWheelSize
         )
@@ -642,86 +612,56 @@ fun ColorPicker(
             hue = hsv[0],
             saturation = hsv[1],
             value = hsv[2],
-            valueInput = hsvInput[2],
-            onValueChange = {
-                hsv[2] = (it / 100f)
-                hsvInput[2] = it.toString()
-                updateColorFromHSV()
-            },
+            valueInput = valueInput,
+            onValueChange = onValueChange,
             onValueInputChange = { str ->
-                val floatVal = str.toFloatOrNull()?.coerceIn(0f, 100f)
-                if (floatVal != null) {
-                    hsv[2] = floatVal
-                    hsvInput[2] = str
-                    updateColorFromHSV()
-                }
+                val intVal = str.toIntOrNull()?.coerceIn(0, 100)
+                if (intVal != null) onValueChange(intVal)
             },
         )
+
         if (showAlphaSlider) {
             Spacer(Modifier.height(16.dp))
             AlphaSlider(
                 color = pickedColor,
-                alpha = alpha,
+                alpha = alpha.roundToInt(),
                 alphaInput = alphaInput,
-                onAlphaChange = { newAlpha ->
-                    alpha = newAlpha
-                    alphaInput = alpha.toString()
-                    updateColorFromAlpha()
-                },
+                onAlphaChange = onAlphaChange,
                 onAlphaInputChange = { str ->
                     val intVal = str.toIntOrNull()?.coerceIn(0, 255)
-                    if (intVal != null) {
-                        alpha = intVal
-                        alphaInput = alpha.toString()
-                        updateColorFromAlpha()
-                    }
+                    if (intVal != null) onAlphaChange(intVal)
                 },
             )
         }
+
         if (showRGBSliders) {
             Spacer(Modifier.height(16.dp))
             RGBSliders(
-                r = rgb.first,
-                g = rgb.second,
-                b = rgb.third,
-                rInput = rgbInput.first,
-                gInput = rgbInput.second,
-                bInput = rgbInput.third,
-                onRChange = { r ->
-                    rgb = Triple(r, rgb.second, rgb.third)
-                    updateColorFromRGB(r, rgb.second, rgb.third)
-                },
-                onGChange = { g ->
-                    rgb = Triple(rgb.first, g, rgb.third)
-                    updateColorFromRGB(rgb.first, g, rgb.third)
-                },
-                onBChange = { b ->
-                    rgb = Triple(rgb.first, rgb.second, b)
-                    updateColorFromRGB(rgb.first, rgb.second, b)
-                },
+                color = pickedColor,
+                r = red.roundToInt(),
+                g = green.roundToInt(),
+                b = blue.roundToInt(),
+                rInput = rInput,
+                gInput = gInput,
+                bInput = bInput,
+                onRChange = onRChange,
+                onGChange = onGChange,
+                onBChange = onBChange,
                 onRInputChange = { str ->
                     val intVal = str.toIntOrNull()?.coerceIn(0, 255)
-                    if (intVal != null) {
-                        rgb = Triple(intVal, rgb.second, rgb.third)
-                        updateColorFromRGB(intVal, rgb.second, rgb.third)
-                    }
+                    if (intVal != null) onRChange(intVal)
                 },
                 onGInputChange = { str ->
                     val intVal = str.toIntOrNull()?.coerceIn(0, 255)
-                    if (intVal != null) {
-                        rgb = Triple(rgb.first, intVal, rgb.third)
-                        updateColorFromRGB(rgb.first, intVal, rgb.third)
-                    }
+                    if (intVal != null) onGChange(intVal)
                 },
                 onBInputChange = { str ->
                     val intVal = str.toIntOrNull()?.coerceIn(0, 255)
-                    if (intVal != null) {
-                        rgb = Triple(rgb.first, rgb.second, intVal)
-                        updateColorFromRGB(rgb.first, rgb.second, intVal)
-                    }
+                    if (intVal != null) onBChange(intVal)
                 }
             )
         }
+
         if (showHexCode) {
             Spacer(Modifier.height(16.dp))
             HexCode(
@@ -729,9 +669,18 @@ fun ColorPicker(
                 onHexChange = { filtered ->
                     if (useHexInput) {
                         val hex = filtered.filter { c -> c.isLetterOrDigit() }.take(8).uppercase()
-                        hexInput = hex
                         if (isValidHex(hex)) {
-                            updateColorFromHex(hex)
+                            val color = Color(("#$hex").toColorInt())
+                            red = color.red * 255
+                            green = color.green * 255
+                            blue = color.blue * 255
+                            alpha = color.alpha * 255
+                            rInput = red.roundToInt().toString()
+                            gInput = green.roundToInt().toString()
+                            bInput = blue.roundToInt().toString()
+                            alphaInput = alpha.roundToInt().toString()
+                            android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+                            valueInput = (hsv[2] * 100).roundToInt().toString()
                         }
                     }
                 },
